@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { findExercise } from "./exerciseDB";
 
 const buildSystemPrompt = (p) => {
   const m={cut:{c:12,p:1,cp:0.35,fp:0.25},lean_bulk:{c:16,p:1,cp:0.40,fp:0.25},recomp:{c:14,p:1.1,cp:0.35,fp:0.28},maintain:{c:15,p:0.9,cp:0.40,fp:0.28}};
@@ -117,10 +118,13 @@ return<div style={{animation:"sIn .3s"}}>
 </div>
 {day.isRest?<div style={{...{background:"rgba(96,165,250,0.06)",border:"1px solid rgba(96,165,250,0.12)",borderRadius:"16px",padding:"30px 20px",textAlign:"center"}}}><div style={{fontSize:"36px",marginBottom:"12px"}}>😴</div><div style={{fontSize:"18px",fontWeight:700,color:"#60a5fa",marginBottom:"8px"}}>Rest Day</div><div style={{fontSize:"13px",color:"var(--t3)",lineHeight:1.7}}>{day.subtitle||"Recovery is part of the process. Eat well, sleep well, hydrate."}<br/><br/>Optional: 30-40 min light walk or LISS cardio.</div></div>
 :(day.exercises||[]).map((ex,i)=>{
-const target=ex.target||ex.muscles||ex.musclesTargeted||ex.primaryMuscles||"";
-const mistake=ex.mistake||ex.commonMistake||ex.avoid||ex.error||"";
-const tip=ex.tip||ex.coachTip||ex.hint||ex.note||"";
-const desc=ex.desc||ex.description||ex.howTo||ex.instructions||"";
+const dbEx=findExercise(ex.name||ex.exercise||ex.exerciseName)||{};
+const target=ex.target||ex.muscles||dbEx.target||"";
+const mistake=ex.mistake||ex.commonMistake||dbEx.mistake||"";
+const tip=ex.tip||ex.coachTip||dbEx.tip||"";
+const desc=ex.desc||ex.description||dbEx.desc||"";
+const equipment=dbEx.equipment||"";
+const exSvg=dbEx.svg||null;
 return<div key={i}style={{background:"var(--s)",border:"1px solid var(--bd)",borderRadius:"14px",marginBottom:"10px",overflow:"hidden"}}>
 <button onClick={()=>setExp(exp===i?null:i)}style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}>
 <div style={{flex:1}}>
@@ -130,16 +134,18 @@ return<div key={i}style={{background:"var(--s)",border:"1px solid var(--bd)",bor
 <div style={{fontSize:"11px",color:exp===i?"var(--a)":"var(--t4)",fontFamily:"var(--m)",marginLeft:"8px"}}>{exp===i?"▲":"▼"}</div>
 </button>
 {exp===i&&<div style={{padding:"0 16px 16px",borderTop:"1px solid var(--bd)",animation:"fadeIn .2s"}}>
-<img src={`https://cdn.jefit.com/assets/img/exercises/${(ex.name||"").toLowerCase().replace(/[^a-z0-9]/g,"-")}.gif`} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none"}} style={{width:"100%",height:"140px",objectFit:"contain",borderRadius:"10px",margin:"12px 0",background:"var(--s2)"}}/>
-{desc&&<div style={{fontSize:"13px",color:"var(--t2)",lineHeight:1.7,marginBottom:"12px",paddingTop:"4px"}}>{desc}</div>}
+{exSvg&&<div style={{display:"flex",justifyContent:"center",padding:"16px 0",background:"var(--s2)",borderRadius:"12px",margin:"12px 0"}}><div style={{width:"100px",height:"100px"}} dangerouslySetInnerHTML={{__html:exSvg}}/></div>}
+{!exSvg&&<div style={{display:"flex",justifyContent:"center",padding:"20px 0",background:"var(--s2)",borderRadius:"12px",margin:"12px 0"}}><div style={{textAlign:"center"}}><div style={{fontSize:"32px",marginBottom:"6px"}}>🏋️</div><div style={{fontSize:"11px",color:"var(--t4)",fontFamily:"var(--m)"}}>{ex.name||"Exercise"}</div></div></div>}
+{desc&&<div style={{fontSize:"13px",color:"var(--t2)",lineHeight:1.7,marginBottom:"12px"}}>{desc}</div>}
+{equipment&&<div style={{fontSize:"11px",color:"var(--t4)",marginBottom:"10px",fontFamily:"var(--m)"}}>🔧 {equipment}</div>}
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
 <div style={{background:"rgba(0,255,170,0.05)",borderRadius:"10px",padding:"10px 12px"}}>
 <div style={{fontSize:"9px",color:"var(--a)",fontFamily:"var(--m)",letterSpacing:"0.08em",marginBottom:"6px"}}>TARGET</div>
-<div style={{fontSize:"12px",color:"var(--t2)",lineHeight:1.5}}>{target||"Primary muscles for this movement"}</div>
+<div style={{fontSize:"12px",color:"var(--t2)",lineHeight:1.5}}>{target||"See description above"}</div>
 </div>
 <div style={{background:"rgba(255,68,102,0.05)",borderRadius:"10px",padding:"10px 12px"}}>
 <div style={{fontSize:"9px",color:"#ff4466",fontFamily:"var(--m)",letterSpacing:"0.08em",marginBottom:"6px"}}>AVOID</div>
-<div style={{fontSize:"12px",color:"var(--t2)",lineHeight:1.5}}>{mistake||"Focus on controlled movement"}</div>
+<div style={{fontSize:"12px",color:"var(--t2)",lineHeight:1.5}}>{mistake||"Use controlled form"}</div>
 </div>
 </div>
 {tip&&<div style={{marginTop:"8px",background:"var(--s2)",borderRadius:"10px",padding:"10px 12px",fontSize:"12px",color:"var(--t3)",lineHeight:1.6}}>💡 {tip}</div>}
