@@ -55,8 +55,6 @@ const Bar=({label,cur,max,color,unit="g"})=>{const p=Math.min(100,Math.round((cu
 
 const WChart=({history})=>{if(history.length<2)return<div style={{textAlign:"center",color:"var(--t4)",fontSize:"11px",padding:"20px"}}>Log 2+ weigh-ins</div>;const vals=history.map(e=>e.weight),lo=Math.min(...vals)-2,hi=Math.max(...vals)+2,rng=hi-lo||1,W=300,H=90,pad=12,pH=H-pad*2,pW=W-pad*2;const pts=history.map((e,i)=>({x:pad+(i/(history.length-1))*pW,y:pad+pH-((e.weight-lo)/rng)*pH}));const line=pts.map(p=>`${p.x},${p.y}`).join(" ");const area=`M${pts[0].x},${H} ${pts.map(p=>`L${p.x},${p.y}`).join(" ")} L${pts[pts.length-1].x},${H} Z`;return<svg width="100%"viewBox={`0 0 ${W} ${H}`}style={{overflow:"visible"}}><defs><linearGradient id="wg"x1="0"y1="0"x2="0"y2="1"><stop offset="0%"stopColor="var(--a)"stopOpacity="0.2"/><stop offset="100%"stopColor="var(--a)"stopOpacity="0"/></linearGradient></defs><path d={area}fill="url(#wg)"/><polyline points={line}fill="none"stroke="var(--a)"strokeWidth="2"strokeLinejoin="round"/>{pts.map((p,i)=><g key={i}><circle cx={p.x}cy={p.y}r="3.5"fill="var(--bg)"stroke="var(--a)"strokeWidth="1.5"/>{(i===0||i===pts.length-1)&&<text x={p.x}y={p.y-9}fill="var(--t3)"fontSize="8"fontFamily="var(--m)"textAnchor="middle">{history[i].weight}</text>}</g>)}</svg>};
 
-// EXERCISE IMAGE — shows a visual for the exercise
-const ExImg=({name})=>{const q=encodeURIComponent(name+" exercise form illustration");return<img src={`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?q=${q}&tbm=isch`)}`} alt={name} onError={e=>{e.target.style.display="none"}} style={{width:"100%",height:"120px",objectFit:"cover",borderRadius:"10px",marginBottom:"10px",background:"var(--s2)"}}/>};
 
 // ONBOARDING — with height, peptide status, rest day config
 const Onboarding=({onComplete})=>{const[step,setStep]=useState(0);const[d,setD]=useState({name:"",email:"",weight:"",heightFt:"5",heightIn:"10",goal:"cut",peptide:"retatrutide",peptideDose:"1",peptideStatus:"already",weeksIn:"1",experience:"intermediate",trainingDays:5,restDays:2,focusAreas:[],injectionDay:1});
@@ -106,27 +104,48 @@ return<div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)",fo
 </div>
 <div style={{padding:"20px 0 40px",display:"flex",gap:"10px"}}>{step>0&&<button onClick={()=>setStep(s=>s-1)}style={{padding:"16px 24px",borderRadius:"14px",background:"var(--s)",border:"1px solid var(--bd)",color:"var(--t2)",fontSize:"15px",fontWeight:600,cursor:"pointer"}}>Back</button>}<button onClick={()=>step<2?setStep(s=>s+1):done()}disabled={!ok}style={{flex:1,padding:"16px",borderRadius:"14px",background:ok?"var(--a)":"var(--s2)",color:ok?"var(--bg)":"var(--t4)",fontSize:"15px",fontWeight:700,cursor:ok?"pointer":"not-allowed",border:"none",boxShadow:ok?"0 0 28px rgba(0,255,170,0.25)":"none",transition:"all .2s"}}>{step<2?"Continue":"Launch APEX →"}</button></div></div>};
 
-// WORKOUT DETAIL — with exercise images
-const WDetail=({day,onBack,onDone})=>{const[exp,setExp]=useState(null);if(!day)return null;return<div style={{animation:"sIn .3s"}}>
-<button onClick={onBack}style={{background:"none",border:"none",color:"var(--a)",fontSize:"13px",cursor:"pointer",fontFamily:"var(--m)",marginBottom:"16px",padding:0}}>← Calendar</button>
-<div style={{fontSize:"11px",color:"var(--t4)",fontFamily:"var(--m)",letterSpacing:"0.1em",textTransform:"uppercase"}}>{day.day}</div>
-<div style={{fontSize:"22px",fontWeight:700,margin:"4px 0"}}>{day.type}</div>
-<div style={{fontSize:"13px",color:"var(--a)",marginBottom:"20px"}}>{day.subtitle}</div>
-{(day.exercises||[]).map((ex,i)=><div key={i}style={{background:"var(--s)",border:"1px solid var(--bd)",borderRadius:"14px",marginBottom:"10px",overflow:"hidden"}}>
+const WDetail=({day,onBack,onDone})=>{const[exp,setExp]=useState(null);if(!day)return null;
+const typeColors={"Push":"#f97316","Pull":"#60a5fa","Legs":"#a78bfa","Upper":"#f0ff4b","Lower":"#c084fc","Full":"var(--a)","Rest":"#60a5fa"};
+const typeKey=Object.keys(typeColors).find(k=>(day.type||"").includes(k))||"";
+const typeColor=typeColors[typeKey]||"var(--a)";
+return<div style={{animation:"sIn .3s"}}>
+<button onClick={onBack}style={{background:"none",border:"none",color:"var(--a)",fontSize:"13px",cursor:"pointer",fontFamily:"var(--m)",marginBottom:"16px",padding:0,display:"flex",alignItems:"center",gap:"6px"}}>← Calendar</button>
+<div style={{marginBottom:"20px"}}>
+<div style={{fontSize:"10px",color:"var(--t4)",fontFamily:"var(--m)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:"4px"}}>{day.day}</div>
+<div style={{fontSize:"24px",fontWeight:800,color:typeColor,marginBottom:"4px"}}>{day.type||"Workout"}</div>
+<div style={{fontSize:"14px",color:"var(--t2)"}}>{day.subtitle||day.focus||day.description||""}</div>
+</div>
+{day.isRest?<div style={{...{background:"rgba(96,165,250,0.06)",border:"1px solid rgba(96,165,250,0.12)",borderRadius:"16px",padding:"30px 20px",textAlign:"center"}}}><div style={{fontSize:"36px",marginBottom:"12px"}}>😴</div><div style={{fontSize:"18px",fontWeight:700,color:"#60a5fa",marginBottom:"8px"}}>Rest Day</div><div style={{fontSize:"13px",color:"var(--t3)",lineHeight:1.7}}>{day.subtitle||"Recovery is part of the process. Eat well, sleep well, hydrate."}<br/><br/>Optional: 30-40 min light walk or LISS cardio.</div></div>
+:(day.exercises||[]).map((ex,i)=>{
+const target=ex.target||ex.muscles||ex.musclesTargeted||ex.primaryMuscles||"";
+const mistake=ex.mistake||ex.commonMistake||ex.avoid||ex.error||"";
+const tip=ex.tip||ex.coachTip||ex.hint||ex.note||"";
+const desc=ex.desc||ex.description||ex.howTo||ex.instructions||"";
+return<div key={i}style={{background:"var(--s)",border:"1px solid var(--bd)",borderRadius:"14px",marginBottom:"10px",overflow:"hidden"}}>
 <button onClick={()=>setExp(exp===i?null:i)}style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}>
-<div><div style={{fontSize:"14px",fontWeight:600,color:"var(--t1)"}}>{i+1}. {ex.name}</div><div style={{fontSize:"12px",color:"var(--t3)",marginTop:"2px",fontFamily:"var(--m)"}}>{ex.sets}×{ex.reps} · {ex.rest}</div></div>
-<span style={{fontSize:"11px",color:"var(--a)",fontFamily:"var(--m)"}}>{exp===i?"▲":"▼ Info"}</span></button>
+<div style={{flex:1}}>
+<div style={{fontSize:"14px",fontWeight:600,color:"var(--t1)",marginBottom:"3px"}}>{i+1}. {ex.name||ex.exercise||ex.exerciseName}</div>
+<div style={{fontSize:"12px",color:"var(--t3)",fontFamily:"var(--m)"}}>{ex.sets}×{ex.reps} · {ex.rest} rest</div>
+</div>
+<div style={{fontSize:"11px",color:exp===i?"var(--a)":"var(--t4)",fontFamily:"var(--m)",marginLeft:"8px"}}>{exp===i?"▲":"▼"}</div>
+</button>
 {exp===i&&<div style={{padding:"0 16px 16px",borderTop:"1px solid var(--bd)",animation:"fadeIn .2s"}}>
-<div style={{padding:"12px 0"}}>
-<img src={`https://cdn.jefit.com/assets/img/exercises/${ex.name.toLowerCase().replace(/[^a-z0-9]/g,"-")}.gif`} alt="" onError={e=>{e.target.onerror=null;e.target.src=`https://via.placeholder.com/300x150/0a0a0a/00ffaa?text=${encodeURIComponent(ex.name)}`}} style={{width:"100%",height:"140px",objectFit:"contain",borderRadius:"10px",marginBottom:"12px",background:"var(--s2)"}}/>
-<div style={{fontSize:"13px",color:"var(--t2)",lineHeight:1.7,marginBottom:"12px"}}>{ex.desc}</div>
+<img src={`https://cdn.jefit.com/assets/img/exercises/${(ex.name||"").toLowerCase().replace(/[^a-z0-9]/g,"-")}.gif`} alt="" onError={e=>{e.target.onerror=null;e.target.style.display="none"}} style={{width:"100%",height:"140px",objectFit:"contain",borderRadius:"10px",margin:"12px 0",background:"var(--s2)"}}/>
+{desc&&<div style={{fontSize:"13px",color:"var(--t2)",lineHeight:1.7,marginBottom:"12px",paddingTop:"4px"}}>{desc}</div>}
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}}>
-<div style={{background:"rgba(0,255,170,0.05)",borderRadius:"10px",padding:"10px 12px"}}><div style={{fontSize:"9px",color:"var(--a)",fontFamily:"var(--m)",letterSpacing:"0.08em",marginBottom:"4px"}}>TARGET</div><div style={{fontSize:"12px",color:"var(--t2)"}}>{ex.target}</div></div>
-<div style={{background:"rgba(255,68,102,0.05)",borderRadius:"10px",padding:"10px 12px"}}><div style={{fontSize:"9px",color:"#ff4466",fontFamily:"var(--m)",letterSpacing:"0.08em",marginBottom:"4px"}}>AVOID</div><div style={{fontSize:"12px",color:"var(--t2)"}}>{ex.mistake}</div></div></div>
-{ex.tip&&<div style={{marginTop:"8px",background:"var(--s2)",borderRadius:"10px",padding:"10px 12px",fontSize:"12px",color:"var(--t3)"}}>💡 {ex.tip}</div>}
-</div></div>}
-</div>)}
-{!day.isRest&&<button onClick={onDone}style={{width:"100%",padding:"16px",borderRadius:"14px",background:"var(--a)",color:"var(--bg)",fontSize:"15px",fontWeight:700,border:"none",cursor:"pointer",marginTop:"8px",boxShadow:"0 0 20px rgba(0,255,170,0.2)"}}>✅ Complete Workout</button>}
+<div style={{background:"rgba(0,255,170,0.05)",borderRadius:"10px",padding:"10px 12px"}}>
+<div style={{fontSize:"9px",color:"var(--a)",fontFamily:"var(--m)",letterSpacing:"0.08em",marginBottom:"6px"}}>TARGET</div>
+<div style={{fontSize:"12px",color:"var(--t2)",lineHeight:1.5}}>{target||"Primary muscles for this movement"}</div>
+</div>
+<div style={{background:"rgba(255,68,102,0.05)",borderRadius:"10px",padding:"10px 12px"}}>
+<div style={{fontSize:"9px",color:"#ff4466",fontFamily:"var(--m)",letterSpacing:"0.08em",marginBottom:"6px"}}>AVOID</div>
+<div style={{fontSize:"12px",color:"var(--t2)",lineHeight:1.5}}>{mistake||"Focus on controlled movement"}</div>
+</div>
+</div>
+{tip&&<div style={{marginTop:"8px",background:"var(--s2)",borderRadius:"10px",padding:"10px 12px",fontSize:"12px",color:"var(--t3)",lineHeight:1.6}}>💡 {tip}</div>}
+</div>}
+</div>})}
+{!day.isRest&&(day.exercises||[]).length>0&&<button onClick={onDone}style={{width:"100%",padding:"16px",borderRadius:"14px",background:"var(--a)",color:"var(--bg)",fontSize:"15px",fontWeight:700,border:"none",cursor:"pointer",marginTop:"8px",boxShadow:"0 0 20px rgba(0,255,170,0.2)"}}>✅ Complete Workout</button>}
 </div>};
 
 // BUMP DISCLAIMER
@@ -193,7 +212,18 @@ const goChat=(m)=>{if(view==="chat"&&msgs.length>0)send(m);else{pendRef.current=
 // Generate workout — with rest day config
 const genWorkout=async()=>{if(!hasKey||!pr||genW)return;setGenW(true);try{
 const restDays=pr.restDays||2;const trainDays=7-restDays;
-const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:MODEL,max_tokens:4096,system:buildSystemPrompt(pr),messages:[{role:"user",content:`Generate my 2-week workout plan with ${trainDays} training days and ${restDays} rest days per week. Respond ONLY with valid JSON. No markdown, no backticks, no text before or after. Each week must have exactly 7 days (Mon-Sun). Rest days use isRest:true. Week 1 and Week 2 must have DIFFERENT exercises for same muscle groups.`}]})});
+const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:MODEL,max_tokens:4096,system:buildSystemPrompt(pr),messages:[{role:"user",content:`Generate my 2-week workout plan with ${trainDays} training days and ${restDays} rest days per week.
+
+STRICT REQUIREMENTS:
+- Respond with ONLY valid JSON. No markdown, no backticks, no text before or after.
+- Each week must have exactly 7 days in order: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+- Use EXACTLY these field names for exercises: name, sets, reps, rest, desc, target, mistake, tip
+- Day type must be one of: "Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Rest"
+- Week 1 and Week 2 must use DIFFERENT exercises for same muscle groups
+- Rest days: {"day":"Thursday","type":"Rest","subtitle":"Recovery or light cardio","isRest":true,"exercises":[]}
+
+JSON format:
+{"weeks":[{"weekNum":1,"days":[{"day":"Monday","type":"Push","subtitle":"Chest, Shoulders & Triceps","isRest":false,"exercises":[{"name":"Barbell Bench Press","sets":4,"reps":"8-10","rest":"90s","desc":"Lie flat, grip just outside shoulder width, lower bar to chest, press up.","target":"Chest, front delts, triceps","mistake":"Flaring elbows too wide","tip":"Keep shoulder blades retracted throughout"}]}]}]}`}]})});
 if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(`HTTP ${res.status}: ${eb?.error?.message||JSON.stringify(eb)}`)}
 const rd=await res.json();let raw=rd.content?.map(b=>b.text||"").join("")||"";raw=raw.replace(/```json\s*/g,"").replace(/```\s*/g,"").trim();const plan=JSON.parse(raw);setWp(plan);sv(WPK,plan);note("💪 Plan generated!")
 }catch(e){note("⚠️ "+e.message);setErr(e.message)}finally{setGenW(false)}};
@@ -271,10 +301,25 @@ return<div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)",fo
 {view==="workouts"&&<div style={{animation:"fadeIn .25s"}}>
 {selDay?<WDetail day={selDay}onBack={()=>setSelDay(null)}onDone={()=>{upd(p=>({...p,workoutLog:{...p.workoutLog,[todayStr()]:true}}));setSelDay(null);note("💪 Done!")}}/>:<>
 {!wp?<div style={{...C,textAlign:"center",padding:"40px 20px"}}><div style={{fontSize:"40px",marginBottom:"16px"}}>🏋️</div><div style={{fontSize:"18px",fontWeight:700,marginBottom:"6px"}}>Generate Your Plan</div><div style={{fontSize:"13px",color:"var(--t3)",marginBottom:"6px",lineHeight:1.6}}>2-week program · {pr.trainingDays||5} training + {pr.restDays||2} rest days/week</div><div style={{fontSize:"12px",color:"var(--t4)",marginBottom:"20px"}}>Focus: {(pr.focusAreas||[]).join(", ")||"Overall"}</div><button onClick={genWorkout}disabled={genW}style={{...bS(!genW),width:"100%"}}>{genW?"⏳ Generating...":"⚡ Generate 2-Week Plan"}</button></div>:<>
-{wp.weeks?.map((wk,wi)=><div key={wi}style={{marginBottom:"16px"}}><div style={{...Lb,marginBottom:"10px"}}>Week {wk.weekNum}</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"6px",marginBottom:"6px"}}>{["M","T","W","T","F","S","S"].map((d,i)=><div key={i}style={{textAlign:"center",fontSize:"9px",color:"var(--t4)",fontFamily:"var(--m)"}}>{d}</div>)}</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"6px"}}>{(wk.days||[]).slice(0,7).map((day,di)=>{const done=data.workoutLog[`w${wi+1}d${di}`]||data.workoutLog[todayStr()];return<button key={di}onClick={()=>setSelDay(day)}style={{aspectRatio:"1",borderRadius:"12px",background:day.isRest?"rgba(96,165,250,0.06)":done?"rgba(0,255,170,0.12)":"var(--s)",border:`1px solid ${day.isRest?"rgba(96,165,250,0.15)":done?"rgba(0,255,170,0.3)":"var(--bd)"}`,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all .2s",padding:"4px"}}><div style={{fontSize:"10px",fontWeight:600,color:day.isRest?"#60a5fa":done?"var(--a)":"var(--t2)"}}>{day.isRest?"Rest":day.type?.split(" ")[0]?.slice(0,4)||"—"}</div>{done&&!day.isRest&&<div style={{fontSize:"8px",color:"var(--a)"}}>✓</div>}{day.isRest&&<div style={{fontSize:"8px",color:"#60a5fa"}}>😴</div>}</button>})}</div></div>)}
-<button onClick={()=>{setWp(null);localStorage.removeItem(WPK)}}style={{width:"100%",padding:"14px",borderRadius:"14px",background:"var(--s)",border:"1px solid var(--bd)",color:"var(--t3)",fontSize:"13px",cursor:"pointer"}}>🔄 Regenerate Plan</button></>}</>}</div>}
+{wp.weeks?.map((wk,wi)=>{
+const orderedDays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const dayMap={};(wk.days||[]).forEach(d=>{if(d.day)dayMap[d.day]=d});
+return<div key={wi}style={{marginBottom:"20px"}}>
+<div style={{...Lb,marginBottom:"12px"}}>Week {wk.weekNum}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"5px",marginBottom:"6px"}}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=><div key={i}style={{textAlign:"center",fontSize:"9px",color:"var(--t4)",fontFamily:"var(--m)"}}>{d}</div>)}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"5px"}}>{orderedDays.map((dayName,di)=>{
+const day=dayMap[dayName]||(wk.days||[])[di];
+if(!day)return<div key={di}style={{aspectRatio:"1"}}/>;
+const done=data.workoutLog[`w${wi+1}d${dayName}`];
+const typeShort=day.isRest?"REST":(day.type||"").replace(/day/i,"").replace(/[-–]/g,"").trim().split(" ")[0].slice(0,4).toUpperCase()||"DAY";
+const typeColor=typeShort==="PUSH"?"#f97316":typeShort==="PULL"?"#60a5fa":typeShort==="LEGS"?"#a78bfa":typeShort==="REST"?"#60a5fa":typeShort.startsWith("UPP")?"#f0ff4b":typeShort.startsWith("LOW")?"#c084fc":"var(--a)";
+return<button key={di}onClick={()=>setSelDay(day)}style={{aspectRatio:"1",borderRadius:"10px",background:day.isRest?"rgba(96,165,250,0.05)":done?"rgba(0,255,170,0.12)":"var(--s)",border:`1px solid ${day.isRest?"rgba(96,165,250,0.12)":done?"rgba(0,255,170,0.3)":"var(--bd)"}`,cursor:day.isRest?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all .2s",padding:"3px",gap:"2px"}}>
+<div style={{fontSize:"8px",fontWeight:700,color:done&&!day.isRest?"var(--a)":typeColor,fontFamily:"var(--m)",letterSpacing:"0.04em"}}>{typeShort}</div>
+{done&&!day.isRest&&<div style={{fontSize:"8px",color:"var(--a)"}}>✓</div>}
+{day.isRest&&<div style={{fontSize:"10px"}}>😴</div>}
+</button>})}
+</div></div>})}
+<button onClick={()=>{setWp(null);localStorage.removeItem(WPK)}}style={{width:"100%",padding:"14px",borderRadius:"14px",background:"var(--s)",border:"1px solid var(--bd)",color:"var(--t3)",fontSize:"13px",cursor:"pointer",marginTop:"4px"}}>🔄 Regenerate Plan</button></>}</>}</div>}
 
 {/* MACROS */}
 {view==="macros"&&<div style={{animation:"fadeIn .25s"}}>
@@ -310,7 +355,7 @@ return<div style={{animation:"fadeIn .25s"}}>
 {key:"supplements",label:"Supplements taken",auto:false,manual:true,icon:"🧴"},
 ].map(({key,label,auto,manual,icon})=>{
 const checked=auto||(dc[key]||false);
-return<button key={key}onClick={()=>manual&&toggleCheck(key)}style={{width:"100%",display:"flex",alignItems:"center",gap:"12px",padding:"12px 0",borderBottom:"1px solid var(--bd)",background:"none",border:"none",borderBottom:"1px solid rgba(255,255,255,0.03)",cursor:manual?"pointer":"default",textAlign:"left"}}>
+return<button key={key}onClick={()=>manual&&toggleCheck(key)}style={{width:"100%",display:"flex",alignItems:"center",gap:"12px",padding:"12px 0",background:"none",border:"none",borderBottom:"1px solid rgba(255,255,255,0.03)",cursor:manual?"pointer":"default",textAlign:"left"}}>
 <div style={{width:"24px",height:"24px",borderRadius:"8px",background:checked?"var(--a)":"var(--s2)",border:`1px solid ${checked?"var(--a)":"var(--bd)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",transition:"all .2s",flexShrink:0,boxShadow:checked?"0 0 8px rgba(0,255,170,0.2)":"none"}}>{checked?"✓":""}</div>
 <span style={{fontSize:"13px",color:checked?"var(--a)":"var(--t2)",fontWeight:checked?600:400,flex:1}}>{icon} {label}</span>
 {manual&&!auto&&<span style={{fontSize:"9px",color:"var(--t4)",fontFamily:"var(--m)"}}>TAP</span>}
