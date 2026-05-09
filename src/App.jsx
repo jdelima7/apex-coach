@@ -28,21 +28,28 @@ PEPTIDE SAFETY: NEVER auto-recommend dose increases. When bump window approaches
 4. Give option to stay at current dose if feeling good
 5. List potential side effects of the higher dose`:""}
 DO NOT generate workout plans in chat. Workouts are managed in the Train tab.
-STYLE: Direct, confident, use ${p.name}'s name. Markdown. Brief.`;
+FORMATTING RULES (CRITICAL):
+- NEVER use markdown tables (they break in this app). Use bullet points or inline text instead.
+- For remaining macros, write: "Remaining today: Xg protein · Xg carbs · Xg fats · X cal"
+- The [MACROS:] tag MUST have plain numbers, NO bold/asterisks inside: [MACROS: protein=38g carbs=32g fats=14g cals=406]
+- WRONG: [MACROS: protein=**38g** carbs=**32g**] — this breaks the auto-logger
+- Keep responses clean and scannable. Use headers and bullets, not tables.
+STYLE: Direct, confident, use ${p.name}'s name. Markdown headers and bullets only. Brief.`;
 };
 
 const MODEL="claude-sonnet-4-6";
 const NOTIFS=[{time:"07:00",msg:"Rise up. Protein."},{time:"12:00",msg:"Lunch. Hit protein."},{time:"15:30",msg:"Pre-workout fuel."},{time:"17:00",msg:"Gym. No excuses."},{time:"19:30",msg:"Post-workout shake."},{time:"21:00",msg:"Hit your macros?"}];
 const LAZY=["Couch is too comfortable. Go lift.","Gym misses you.","Future shredded self is judging you.","Only bad workout is the one that didn't happen.","Someone with worse genetics is in the gym right now."];
 const SK="apex4d",CK="apex4c",WPK="apex4w";
-const defs=()=>({profile:null,weightHistory:[],macroLog:{},workoutLog:{},notificationsEnabled:false,bumpDismissed:{}});
+const defs=()=>({profile:null,weightHistory:[],macroLog:{},workoutLog:{},notificationsEnabled:false,bumpDismissed:{},dailyChecks:{}});
+const QUOTES=["The only person you need to be better than is who you were yesterday.","Discipline is choosing between what you want now and what you want most.","Your body can stand almost anything. It's your mind you have to convince.","The pain you feel today will be the strength you feel tomorrow.","Don't wish for it. Work for it.","Success isn't given. It's earned on the track, on the field, in the gym.","The harder you work, the luckier you get.","Champions aren't made in gyms. Champions are made from something deep inside — a desire, a dream, a vision.","Strive for progress, not perfection.","You don't have to be extreme, just consistent.","The best project you'll ever work on is you.","Motivation gets you started. Habit keeps you going.","It never gets easier. You just get stronger.","Fall in love with the process and the results will come.","Small daily improvements are the key to staggering long-term results."];
 const ld=(k,fb)=>{try{return JSON.parse(localStorage.getItem(k))||fb}catch{return fb}};
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 const todayStr=()=>new Date().toISOString().split("T")[0];
 const dayN=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const calcT=(p)=>{if(!p)return{pro:180,carbs:165,fats:62,cals:2100};const m={cut:{c:12,p:1},lean_bulk:{c:16,p:1},recomp:{c:14,p:1.1},maintain:{c:15,p:0.9}};const t=m[p.goal]||m.cut;const cals=Math.round(p.weight*t.c);return{pro:Math.round(p.weight*t.p),carbs:Math.round((cals*0.35)/4),fats:Math.round((cals*0.25)/9),cals}};
 
-const fmt=(text)=>{if(!text)return null;return text.split("\n").map((ln,i)=>{const h=ln.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--a)">$1</strong>').replace(/\*(.*?)\*/g,"<em>$1</em>");if(ln.startsWith("### "))return<div key={i}style={{color:"var(--a)",fontSize:"11px",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",margin:"14px 0 4px",fontFamily:"var(--m)"}}>{ln.slice(4)}</div>;if(ln.startsWith("## "))return<div key={i}style={{color:"var(--a)",fontSize:"13px",fontWeight:700,margin:"16px 0 5px",fontFamily:"var(--m)"}}>{ln.slice(3)}</div>;if(ln.startsWith("# "))return<div key={i}style={{color:"var(--a)",fontSize:"15px",fontWeight:700,margin:"14px 0 6px",fontFamily:"var(--m)"}}>{ln.slice(2)}</div>;if(ln.startsWith("- ")||ln.startsWith("• "))return<div key={i}style={{display:"flex",gap:"7px",margin:"2px 0"}}><span style={{color:"var(--a)",flexShrink:0}}>▹</span><span dangerouslySetInnerHTML={{__html:h.slice(2)}}/></div>;if(/^\d+[\.\)]\s/.test(ln))return<div key={i}style={{margin:"2px 0"}}dangerouslySetInnerHTML={{__html:h}}/>;if(ln.startsWith("---"))return<hr key={i}style={{border:"none",borderTop:"1px solid var(--bd)",margin:"8px 0"}}/>;if(ln.startsWith("[MACROS:"))return<div key={i}style={{background:"rgba(0,255,170,0.06)",border:"1px solid rgba(0,255,170,0.15)",borderRadius:"8px",padding:"6px 10px",fontSize:"11px",color:"var(--a)",fontFamily:"var(--m)",margin:"6px 0"}}>{ln}</div>;if(!ln.trim())return<div key={i}style={{height:"6px"}}/>;return<div key={i}dangerouslySetInnerHTML={{__html:h}}style={{margin:"2px 0"}}/>;})};
+const fmt=(text)=>{if(!text)return null;return text.split("\n").map((ln,i)=>{const h=ln.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--a)">$1</strong>').replace(/\*(.*?)\*/g,"<em>$1</em>");if(ln.startsWith("### "))return<div key={i}style={{color:"var(--a)",fontSize:"11px",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",margin:"14px 0 4px",fontFamily:"var(--m)"}}>{ln.slice(4)}</div>;if(ln.startsWith("## "))return<div key={i}style={{color:"var(--a)",fontSize:"13px",fontWeight:700,margin:"16px 0 5px",fontFamily:"var(--m)"}}>{ln.slice(3)}</div>;if(ln.startsWith("# "))return<div key={i}style={{color:"var(--a)",fontSize:"15px",fontWeight:700,margin:"14px 0 6px",fontFamily:"var(--m)"}}>{ln.slice(2)}</div>;if(ln.startsWith("- ")||ln.startsWith("• "))return<div key={i}style={{display:"flex",gap:"7px",margin:"2px 0"}}><span style={{color:"var(--a)",flexShrink:0}}>▹</span><span dangerouslySetInnerHTML={{__html:h.slice(2)}}/></div>;if(/^\d+[\.\)]\s/.test(ln))return<div key={i}style={{margin:"2px 0"}}dangerouslySetInnerHTML={{__html:h}}/>;if(ln.startsWith("---"))return<hr key={i}style={{border:"none",borderTop:"1px solid var(--bd)",margin:"8px 0"}}/>;if(ln.startsWith("[MACROS:")){const mp=ln.replace(/\*\*/g,"").match(/protein=(\d+)g?\s*carbs=(\d+)g?\s*fats=(\d+)g?\s*cals=(\d+)/i);if(mp){const[,p,c,f,cal]=mp;return<div key={i}style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"6px",margin:"8px 0",padding:"10px",background:"rgba(0,255,170,0.04)",border:"1px solid rgba(0,255,170,0.1)",borderRadius:"12px"}}>{[["PRO",p,"var(--a)"],["CARB",c,"#60a5fa"],["FAT",f,"#f97316"],["CAL",cal,"#a78bfa"]].map(([l,v,col])=><div key={l}style={{textAlign:"center"}}><div style={{fontSize:"8px",color:"var(--t4)",fontFamily:"var(--m)",letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:"16px",fontWeight:700,color:col,fontFamily:"var(--m)"}}>{v}</div><div style={{fontSize:"8px",color:"var(--t4)"}}>g</div></div>)}</div>}return<div key={i}style={{background:"rgba(0,255,170,0.04)",border:"1px solid rgba(0,255,170,0.1)",borderRadius:"10px",padding:"6px 10px",fontSize:"11px",color:"var(--a)",fontFamily:"var(--m)",margin:"6px 0"}}>{ln}</div>}if(!ln.trim())return<div key={i}style={{height:"6px"}}/>;return<div key={i}dangerouslySetInnerHTML={{__html:h}}style={{margin:"2px 0"}}/>;})};
 
 const Bar=({label,cur,max,color,unit="g"})=>{const p=Math.min(100,Math.round((cur/max)*100));return<div style={{marginBottom:"10px"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:"4px"}}><span style={{fontSize:"10px",color:"var(--t3)",fontFamily:"var(--m)",letterSpacing:"0.06em"}}>{label}</span><span style={{fontSize:"10px",color:cur>max?"#ff4466":"var(--t2)",fontFamily:"var(--m)"}}>{cur}<span style={{color:"var(--t4)"}}>/{max}{unit}</span></span></div><div style={{background:"var(--s2)",borderRadius:"4px",height:"5px",overflow:"hidden"}}><div style={{width:`${p}%`,height:"100%",background:cur>max?"#ff4466":color,borderRadius:"4px",transition:"width 0.4s",boxShadow:`0 0 8px ${color}44`}}/></div></div>};
 
@@ -175,7 +182,8 @@ try{const lm=nM.slice(-10).map((m,i)=>i===nM.slice(-10).length-1&&img64?{role:"u
 const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:MODEL,max_tokens:4096,system:buildSystemPrompt(pr),messages:am})});
 if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.error?.message||`HTTP ${res.status}`)}
 const rd=await res.json();const reply=rd.content?.map(b=>b.text||"").join("\n")||"No response.";setMsgs(p=>[...p,{role:"assistant",content:reply}]);
-const mm=reply.match(/\[MACROS:\s*protein=(\d+)g?\s*carbs=(\d+)g?\s*fats=(\d+)g?\s*cals=(\d+)\]/i);
+const cleanReply=reply.replace(/\*\*/g,"");
+const mm=cleanReply.match(/\[MACROS:\s*protein=(\d+)g?\s*carbs=(\d+)g?\s*fats=(\d+)g?\s*cals=(\d+)\]/i);
 if(mm){const[,pp,cc,ff,cal]=mm.map(Number);const k=todayStr();upd(p=>({...p,macroLog:{...p.macroLog,[k]:{protein:(p.macroLog[k]?.protein||0)+pp,carbs:(p.macroLog[k]?.carbs||0)+cc,fats:(p.macroLog[k]?.fats||0)+ff,cals:(p.macroLog[k]?.cals||0)+cal}}}));note(`✅ ${pp}p ${cc}c ${ff}f ${cal}cal`)}
 const wm=txt.match(/(\d{2,3}(?:\.\d{1,2})?)\s*(lbs?|pounds?)/i);if(wm){const w=parseFloat(wm[1]);if(w>=80&&w<=500){upd(p=>({...p,profile:{...p.profile,weight:w},weightHistory:[...(p.weightHistory||[]),{date:todayStr(),weight:w}]}));note(`⚖️ ${w}lbs`)}}
 }catch(e){setMsgs(p=>[...p,{role:"assistant",content:`**Error** ⚠️\n${e.message}\nCheck .env key & restart.`}]);setErr(e.message)}finally{setBusy(false)}};
@@ -276,10 +284,64 @@ return<div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--t1)",fo
 <div style={C}><div style={Lb}>What can I cook?</div><div style={{fontSize:"13px",color:"var(--t3)",marginBottom:"12px"}}>Snap a grocery photo or type what's in your fridge.</div><div style={{display:"flex",gap:"8px"}}><button onClick={()=>fileRef.current?.click()}style={{...bS(),flex:1,background:"transparent",border:"1px solid var(--a)",color:"var(--a)",boxShadow:"none"}}>📸 Scan</button><button onClick={()=>goChat("I have in my fridge: ")}style={{...bS(),flex:1}}>✏️ Type</button></div></div></div>}
 
 {/* PROGRESS */}
-{view==="progress"&&<div style={{animation:"fadeIn .25s"}}>
+{view==="progress"&&(()=>{
+const proLeft=Math.max(0,tg.pro-tl.protein),carbLeft=Math.max(0,tg.carbs-tl.carbs),fatLeft=Math.max(0,tg.fats-tl.fats),calLeft=Math.max(0,tg.cals-tl.cals);
+const workedOut=!!data.workoutLog[todayStr()];
+const dc=data.dailyChecks[todayStr()]||{};
+const toggleCheck=(k)=>upd(p=>{const td=p.dailyChecks[todayStr()]||{};return{...p,dailyChecks:{...p.dailyChecks,[todayStr()]:{...td,[k]:!td[k]}}};});
+const proHit=tl.protein>=tg.pro,calHit=tl.cals>=tg.cals*0.85;
+const quoteIdx=new Date().getDate()%QUOTES.length;
+
+// Smart suggestions based on remaining macros
+const suggestions=[];
+if(proLeft>0&&proLeft<=30){suggestions.push({food:"Whey protein shake",pro:25,cal:120},{food:"Greek yogurt cup",pro:15,cal:100},{food:"String cheese (2)",pro:14,cal:160})}
+else if(proLeft>30&&proLeft<=60){suggestions.push({food:"Chicken breast (6oz)",pro:42,cal:190},{food:"Whey shake + banana",pro:27,cal:220},{food:"Tuna packet",pro:20,cal:90})}
+else if(proLeft>60){suggestions.push({food:"Chicken breast (8oz) + rice",pro:52,cal:380},{food:"Ground turkey bowl",pro:35,cal:300},{food:"Whey shake + PB toast",pro:32,cal:350})}
+
+return<div style={{animation:"fadeIn .25s"}}>
+{/* Daily checklist */}
+<div style={C}><div style={Lb}>Today's Checklist</div>
+{[
+{key:"workout",label:"Workout completed",auto:workedOut,icon:"🏋️"},
+{key:"protein",label:`Protein goal${proHit?"":" ("+proLeft+"g left)"}`,auto:proHit,icon:"🥩"},
+{key:"calories",label:`Calorie goal${calHit?"":" ("+calLeft+" left)"}`,auto:calHit,icon:"🔥"},
+{key:"creatine",label:"Creatine taken",auto:false,manual:true,icon:"💊"},
+{key:"water",label:"Water intake (64oz+)",auto:false,manual:true,icon:"💧"},
+{key:"supplements",label:"Supplements taken",auto:false,manual:true,icon:"🧴"},
+].map(({key,label,auto,manual,icon})=>{
+const checked=auto||(dc[key]||false);
+return<button key={key}onClick={()=>manual&&toggleCheck(key)}style={{width:"100%",display:"flex",alignItems:"center",gap:"12px",padding:"12px 0",borderBottom:"1px solid var(--bd)",background:"none",border:"none",borderBottom:"1px solid rgba(255,255,255,0.03)",cursor:manual?"pointer":"default",textAlign:"left"}}>
+<div style={{width:"24px",height:"24px",borderRadius:"8px",background:checked?"var(--a)":"var(--s2)",border:`1px solid ${checked?"var(--a)":"var(--bd)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",transition:"all .2s",flexShrink:0,boxShadow:checked?"0 0 8px rgba(0,255,170,0.2)":"none"}}>{checked?"✓":""}</div>
+<span style={{fontSize:"13px",color:checked?"var(--a)":"var(--t2)",fontWeight:checked?600:400,flex:1}}>{icon} {label}</span>
+{manual&&!auto&&<span style={{fontSize:"9px",color:"var(--t4)",fontFamily:"var(--m)"}}>TAP</span>}
+</button>})}
+<div style={{marginTop:"12px",textAlign:"center"}}><span style={{fontSize:"12px",color:"var(--t3)"}}>{[workedOut,proHit,calHit,dc.creatine,dc.water,dc.supplements].filter(Boolean).length}/6 complete</span></div>
+</div>
+
+{/* Smart suggestion */}
+{proLeft>0&&<div style={{...C,background:"linear-gradient(135deg,rgba(0,255,170,0.04),rgba(0,200,140,0.02))",border:"1px solid rgba(0,255,170,0.1)"}}>
+<div style={Lb}>🎯 Close the Gap</div>
+<div style={{fontSize:"13px",color:"var(--t2)",marginBottom:"12px"}}>{proLeft}g protein left · Here's how:</div>
+{suggestions.map((s,i)=><div key={i}style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:"var(--s)",borderRadius:"10px",marginBottom:"6px"}}>
+<div><div style={{fontSize:"13px",color:"var(--t1)",fontWeight:500}}>{s.food}</div><div style={{fontSize:"11px",color:"var(--t4)",marginTop:"2px"}}>{s.cal} cal</div></div>
+<div style={{fontSize:"14px",fontWeight:700,color:"var(--a)",fontFamily:"var(--m)"}}>{s.pro}g</div>
+</div>)}
+<div style={{fontSize:"11px",color:"var(--t4)",marginTop:"8px",textAlign:"center"}}>Tap any meal idea → ask APEX for the full recipe in Coach tab</div>
+</div>}
+
+{/* Weight trend */}
 <div style={C}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"14px"}}><div style={Lb}>Weight Trend</div><div style={{fontSize:"22px",fontWeight:800,color:"var(--a)"}}>{pr.weight}<span style={{fontSize:"12px",color:"var(--t4)",fontWeight:400}}> lbs</span></div></div><WChart history={data.weightHistory||[]}/>
 <div style={{marginTop:"14px",display:"flex",gap:"8px"}}><input type="number"placeholder="Weight"value={wIn}onChange={e=>setWIn(e.target.value)}onKeyDown={e=>{if(e.key==="Enter")logW()}}style={{...iS,flex:1}}/><button onClick={logW}style={{...bS(),flexShrink:0}}>Log</button></div></div>
-{(data.weightHistory?.length||0)>0&&<div style={C}><div style={Lb}>History</div>{[...(data.weightHistory||[])].reverse().slice(0,15).map((e,i)=><div key={i}style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--bd)",fontSize:"12px"}}><span style={{color:"var(--t3)"}}>{e.date}</span><span style={{color:"var(--a)",fontFamily:"var(--m)"}}>{e.weight} lbs</span></div>)}</div>}</div>}
+
+{/* Weight history */}
+{(data.weightHistory?.length||0)>0&&<div style={C}><div style={Lb}>History</div>{[...(data.weightHistory||[])].reverse().slice(0,10).map((e,i)=><div key={i}style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--bd)",fontSize:"12px"}}><span style={{color:"var(--t3)"}}>{e.date}</span><span style={{color:"var(--a)",fontFamily:"var(--m)"}}>{e.weight} lbs</span></div>)}</div>}
+
+{/* Motivation */}
+<div style={{background:"linear-gradient(135deg,rgba(0,255,170,0.03),rgba(96,165,250,0.03))",border:"1px solid rgba(255,255,255,0.04)",borderRadius:"16px",padding:"24px 20px",marginBottom:"12px",textAlign:"center"}}>
+<div style={{fontSize:"14px",color:"var(--t2)",lineHeight:1.8,fontStyle:"italic"}}>"{QUOTES[quoteIdx]}"</div>
+<div style={{fontSize:"10px",color:"var(--t4)",marginTop:"10px",fontFamily:"var(--m)"}}>DAILY MOTIVATION</div>
+</div>
+</div>})()}
 
 {/* SETTINGS */}
 {view==="settings"&&<div style={{animation:"fadeIn .25s"}}>
