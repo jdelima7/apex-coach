@@ -306,19 +306,30 @@ const orderedDays=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"
 const dayMap={};(wk.days||[]).forEach(d=>{if(d.day)dayMap[d.day]=d});
 return<div key={wi}style={{marginBottom:"20px"}}>
 <div style={{...Lb,marginBottom:"12px"}}>Week {wk.weekNum}</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"5px",marginBottom:"6px"}}>{["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=><div key={i}style={{textAlign:"center",fontSize:"9px",color:"var(--t4)",fontFamily:"var(--m)"}}>{d}</div>)}</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"5px"}}>{orderedDays.map((dayName,di)=>{
+{orderedDays.map((dayName,di)=>{
 const day=dayMap[dayName]||(wk.days||[])[di];
-if(!day)return<div key={di}style={{aspectRatio:"1"}}/>;
+if(!day)return null;
 const done=data.workoutLog[`w${wi+1}d${dayName}`];
-const typeShort=day.isRest?"REST":(day.type||"").replace(/day/i,"").replace(/[-–]/g,"").trim().split(" ")[0].slice(0,4).toUpperCase()||"DAY";
-const typeColor=typeShort==="PUSH"?"#f97316":typeShort==="PULL"?"#60a5fa":typeShort==="LEGS"?"#a78bfa":typeShort==="REST"?"#60a5fa":typeShort.startsWith("UPP")?"#f0ff4b":typeShort.startsWith("LOW")?"#c084fc":"var(--a)";
-return<button key={di}onClick={()=>setSelDay(day)}style={{aspectRatio:"1",borderRadius:"10px",background:day.isRest?"rgba(96,165,250,0.05)":done?"rgba(0,255,170,0.12)":"var(--s)",border:`1px solid ${day.isRest?"rgba(96,165,250,0.12)":done?"rgba(0,255,170,0.3)":"var(--bd)"}`,cursor:day.isRest?"default":"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",transition:"all .2s",padding:"3px",gap:"2px"}}>
-<div style={{fontSize:"8px",fontWeight:700,color:done&&!day.isRest?"var(--a)":typeColor,fontFamily:"var(--m)",letterSpacing:"0.04em"}}>{typeShort}</div>
-{done&&!day.isRest&&<div style={{fontSize:"8px",color:"var(--a)"}}>✓</div>}
-{day.isRest&&<div style={{fontSize:"10px"}}>😴</div>}
+const typeLabel=day.isRest?"Rest Day":(day.type||"Workout");
+const sub=day.subtitle||day.focus||"";
+const typeColors={"Push":"#f97316","Pull":"#60a5fa","Legs":"#a78bfa","Upper":"#f0ff4b","Lower":"#c084fc","Full":"var(--a)","Rest":"#60a5fa"};
+const typeKey=Object.keys(typeColors).find(k=>typeLabel.includes(k))||"";
+const col=typeColors[typeKey]||"var(--a)";
+return<button key={di}onClick={()=>setSelDay(day)}style={{width:"100%",display:"flex",alignItems:"center",gap:"12px",padding:"12px 14px",marginBottom:"6px",borderRadius:"12px",background:day.isRest?"rgba(96,165,250,0.04)":done?"rgba(0,255,170,0.06)":"var(--s)",border:`1px solid ${day.isRest?"rgba(96,165,250,0.1)":done?"rgba(0,255,170,0.15)":"var(--bd)"}`,cursor:"pointer",textAlign:"left",transition:"all .15s"}}>
+<div style={{width:"40px",textAlign:"center",flexShrink:0}}>
+<div style={{fontSize:"9px",color:"var(--t4)",fontFamily:"var(--m)",letterSpacing:"0.06em"}}>{dayName.slice(0,3).toUpperCase()}</div>
+</div>
+<div style={{flex:1,minWidth:0}}>
+<div style={{fontSize:"14px",fontWeight:700,color:done&&!day.isRest?"var(--a)":col}}>{typeLabel}</div>
+{sub&&<div style={{fontSize:"11px",color:"var(--t3)",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{sub}</div>}
+</div>
+<div style={{flexShrink:0}}>
+{done&&!day.isRest&&<div style={{width:"22px",height:"22px",borderRadius:"6px",background:"var(--a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",color:"var(--bg)",fontWeight:700}}>✓</div>}
+{day.isRest&&<div style={{fontSize:"16px"}}>😴</div>}
+{!done&&!day.isRest&&<div style={{fontSize:"11px",color:"var(--t4)",fontFamily:"var(--m)"}}>→</div>}
+</div>
 </button>})}
-</div></div>})}
+</div>})}
 <button onClick={()=>{setWp(null);localStorage.removeItem(WPK)}}style={{width:"100%",padding:"14px",borderRadius:"14px",background:"var(--s)",border:"1px solid var(--bd)",color:"var(--t3)",fontSize:"13px",cursor:"pointer",marginTop:"4px"}}>🔄 Regenerate Plan</button></>}</>}</div>}
 
 {/* MACROS */}
@@ -394,7 +405,11 @@ return<button key={key}onClick={()=>manual&&toggleCheck(key)}style={{width:"100%
 <div style={C}><div style={Lb}>Profile</div><div style={{fontSize:"14px",color:"var(--t1)",marginBottom:"4px"}}><strong>{pr.name}</strong>{pr.email?` · ${pr.email}`:""}</div><div style={{fontSize:"12px",color:"var(--t3)",marginBottom:"4px"}}>{pr.goal.replace("_"," ")} · {pr.experience}{pr.height?` · ${Math.floor(pr.height/12)}'${pr.height%12}"`:""}</div><div style={{fontSize:"12px",color:"var(--t3)",marginBottom:"4px"}}>{pr.peptide&&pr.peptide!=="none"?`${pr.peptide} ${pr.peptideDose}mg · Week ${pepWeek}`:"No peptide"}</div><div style={{fontSize:"12px",color:"var(--t3)",marginBottom:"12px"}}>Focus: {(pr.focusAreas||[]).join(", ")} · {pr.trainingDays||5}d train / {pr.restDays||2}d rest · Inj: {dayN[pr.injectionDay]}</div><input type="number"placeholder="Update weight"defaultValue={pr.weight}id="sw"style={{...iS,marginBottom:"8px"}}/><button onClick={()=>{const w=parseFloat(document.getElementById("sw").value);upd(p=>({...p,profile:{...p.profile,weight:w||p.profile.weight}}));note("✅ Saved")}}style={{...bS(),width:"100%"}}>Save</button></div>
 <div style={C}><div style={Lb}>API</div><div style={{display:"flex",alignItems:"center",gap:"6px"}}><div style={{width:"6px",height:"6px",borderRadius:"50%",background:hasKey?"var(--a)":"#ff4466"}}/><span style={{fontSize:"12px",color:"var(--t3)"}}>{hasKey?"Connected (Sonnet 4.6)":"Not connected"}</span></div></div>
 <div style={C}><div style={Lb}>Data</div><button onClick={clearChat}style={{width:"100%",padding:"14px",borderRadius:"14px",background:"var(--s)",border:"1px solid var(--bd)",color:"var(--t3)",fontSize:"13px",cursor:"pointer",marginBottom:"8px"}}>Clear chat</button><button onClick={()=>{localStorage.clear();window.location.reload()}}style={{width:"100%",padding:"14px",borderRadius:"14px",background:"rgba(255,68,102,0.06)",border:"1px solid rgba(255,68,102,0.15)",color:"#ff4466",fontSize:"13px",cursor:"pointer"}}>Reset everything</button></div>
-<div style={{textAlign:"center",padding:"24px",fontSize:"10px",color:"var(--t4)",fontFamily:"var(--m)"}}>APEX v3.1 · Sonnet 4.6</div></div>}
+<div style={C}><div style={Lb}>App Update</div>
+<div style={{fontSize:"12px",color:"var(--t3)",marginBottom:"12px",lineHeight:1.6}}>If you've deployed a new version, press below to refresh the app. Your data (profile, macros, workouts) will be preserved.</div>
+<button onClick={()=>{if("caches"in window){caches.keys().then(names=>{names.forEach(name=>caches.delete(name))})}setTimeout(()=>{window.location.href=window.location.href.split("?")[0]+"?v="+Date.now()},300)}} style={{width:"100%",padding:"16px",borderRadius:"14px",background:"linear-gradient(135deg,rgba(0,255,170,0.1),rgba(96,165,250,0.1))",border:"1px solid rgba(0,255,170,0.2)",color:"var(--a)",fontSize:"14px",fontWeight:700,cursor:"pointer",transition:"all .2s"}}>🔄 Check for Updates</button>
+</div>
+<div style={{textAlign:"center",padding:"24px",fontSize:"10px",color:"var(--t4)",fontFamily:"var(--m)"}}>APEX v3.2 · Sonnet 4.6</div></div>}
 </div>
 
 {/* NAV */}
