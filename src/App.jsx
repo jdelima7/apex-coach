@@ -218,18 +218,21 @@ const goChat=(m)=>{if(view==="chat"&&msgs.length>0)send(m);else{pendRef.current=
 // Generate workout — with rest day config
 const genWorkout=async()=>{if(!hasKey||!pr||genW)return;setGenW(true);try{
 const restDays=pr.restDays||2;const trainDays=7-restDays;
-const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:MODEL,max_tokens:4096,system:buildSystemPrompt(pr),messages:[{role:"user",content:`Generate my 2-week workout plan with ${trainDays} training days and ${restDays} rest days per week.
+const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:MODEL,max_tokens:8192,system:buildSystemPrompt(pr),messages:[{role:"user",content:`Generate my 2-week workout plan with ${trainDays} training days and ${restDays} rest days per week.
 
 STRICT REQUIREMENTS:
-- Respond with ONLY valid JSON. No markdown, no backticks, no text before or after.
-- Each week must have exactly 7 days in order: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-- Use EXACTLY these field names for exercises: name, sets, reps, rest, desc, target, mistake, tip
-- Day type must be one of: "Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Rest"
-- Week 1 and Week 2 must use DIFFERENT exercises for same muscle groups
-- Rest days: {"day":"Thursday","type":"Rest","subtitle":"Recovery or light cardio","isRest":true,"exercises":[]}
+- Respond with ONLY valid JSON. No markdown, no backticks, no extra text.
+- Each week: exactly 7 days in order Monday through Sunday
+- Field names for exercises: name, sets, reps, rest, desc, target, mistake, tip
+- Keep desc SHORT (max 15 words). Keep target/mistake/tip SHORT (max 8 words each).
+- Day type: "Push", "Pull", "Legs", "Upper", "Lower", "Full Body", or "Rest"
+- 4-5 exercises per training day (not more)
+- Week 1 and Week 2: DIFFERENT exercises for same muscles
+- Rest: {"day":"Thursday","type":"Rest","subtitle":"Recovery/LISS","isRest":true,"exercises":[]}
 
-JSON format:
-{"weeks":[{"weekNum":1,"days":[{"day":"Monday","type":"Push","subtitle":"Chest, Shoulders & Triceps","isRest":false,"exercises":[{"name":"Barbell Bench Press","sets":4,"reps":"8-10","rest":"90s","desc":"Lie flat, grip just outside shoulder width, lower bar to chest, press up.","target":"Chest, front delts, triceps","mistake":"Flaring elbows too wide","tip":"Keep shoulder blades retracted throughout"}]}]}]}`}]})});
+Example exercise: {"name":"Barbell Bench Press","sets":4,"reps":"8-10","rest":"90s","desc":"Flat bench, lower to chest, press up.","target":"Chest, delts, triceps","mistake":"Flaring elbows wide","tip":"Retract shoulder blades"}
+
+JSON: {"weeks":[{"weekNum":1,"days":[...7 days...]},{"weekNum":2,"days":[...7 days...]}]}`}]})});
 if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(`HTTP ${res.status}: ${eb?.error?.message||JSON.stringify(eb)}`)}
 const rd=await res.json();let raw=rd.content?.map(b=>b.text||"").join("")||"";raw=raw.replace(/```json\s*/g,"").replace(/```\s*/g,"").trim();const plan=JSON.parse(raw);setWp(plan);sv(WPK,plan);note("💪 Plan generated!")
 }catch(e){note("⚠️ "+e.message);setErr(e.message)}finally{setGenW(false)}};
